@@ -20,7 +20,13 @@ We will use a training set (known outcome attached) to create, train and crossva
 
 ## Data Preparation and Model Design
 
-We start by downloading the training data and create dataframe from it:
+We will use the following packages (dependent packages will be loaded automatically):
+```{r Packages, cache=TRUE, results = "hide"}
+library(caret)
+library(randomForest)
+```
+
+We start by downloading the training data and create a dataframe from it:
 ```{r loadTraining, cache=TRUE}
 # download training data
 trainingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
@@ -35,11 +41,6 @@ trainingRaw <- read.csv(trainingFile, header = TRUE, na.strings = "NA")
 If you look at the data (for example using View(trainingData)), you see that many out of the `r ncol(trainingRaw)` columns are blank,  or NA. We will remove those columns and the columns that do not contribute to the prediction (near zero variance predictors, name and time columns):
 
 ```{r cleanData, cache=TRUE}
-library(lattice)
-library(ggplot2)
-library(caret)
-library(randomForest)
-
 # remove NAs
 removeNA =  colSums(is.na(trainingRaw))
 trainingSet = trainingRaw[,removeNA == 0] 
@@ -65,6 +66,7 @@ Now we are able to use the training data to train a model. I have tested Linear 
 ```{r fitModel, cache=TRUE}
 modfitrf <- train(classe ~ ., data = training, method ="rf", prox=TRUE, ntree = 100)
 ```
+## Validation
 
 Let's validate the model with the validation/probe data and measure the accuracy of our model:
 ```{r probe, cache=TRUE}
@@ -73,11 +75,13 @@ predictrf <- predict(modfitrf, probe)
 
 confusionMatrix(predictrf, probe$classe)
 # accuracy
-rf_accuracy <- sum(predictrf == probe$classe) / length(predictrf)
-# RMSE
-RMSE <- sqrt(mean((predictrf - probe$classe)^2))
-
+rf_accuracy <- sum(predictrf == probe$classe) / length(probe$classe)
+# out of sample error 
+ose <- sum(predictrf != probe$classe)/length(probe$classe)
 ```
+As can can see in the information for the confusion matrix and the manual computation, the accuracy is `r round(rf_accuracy*100,2)` % and the out of sample error (generalization error) is `r round(ose*100,2)` %, which is quite good.
+
+## Predicting outcomes for the testing set
 
 We are ready to use the model on the testing data. Similar to the training data we download it and do the same preparations as we did for the training data:
 ```{r testing, cache=TRUE}
@@ -96,6 +100,7 @@ testing <- testing[7:ncol(testing)]
 
 # use the Random forest model to predict classe for the testing data
 rftest <- predict(modfitrf, testing)
+rftest
 ```
 
 
