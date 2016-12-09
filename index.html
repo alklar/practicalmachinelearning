@@ -117,21 +117,18 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Qualitative Analysis of Weight Lifting Exercises</h1>
 <h4 class="author"><em>Alexander Klar</em></h4>
-<h4 class="date"><em>December 4, 2016</em></h4>
+<h4 class="date"><em>December 9, 2016</em></h4>
 
 </div>
 
 
-<div id="r-markdown" class="section level2">
-<h2>R Markdown</h2>
-</div>
 <div id="abstract" class="section level2">
 <h2>Abstract</h2>
-<p>In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution. The original dataset is abailable here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a>. The quality of the exercises is contained in the variable “classe” in the dataset: Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). We will use the training set to create, train and crossvalidate a model to predict classe.</p>
+<p>In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution. The original dataset is abailable here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a>. The quality of the exercises is contained in the variable “classe” in the dataset. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). We will use a training set (known outcome attached) to create, train and crossvalidate a model to predict classe for a testing set (known outcome not attached).</p>
 </div>
 <div id="data-preparation-and-model-design" class="section level2">
 <h2>Data Preparation and Model Design</h2>
-<p>Download training data, create dataframe</p>
+<p>We start by downloading the training data and create dataframe from it:</p>
 <pre class="r"><code># download training data
 trainingURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 trainingFile &lt;- &quot;pml-training.csv&quot;
@@ -139,20 +136,96 @@ if(!exists(trainingFile)){
   download.file(trainingURL, destfile= trainingFile)
 }
 # create dataframe
-trainingData &lt;- read.csv(trainingFile, header = TRUE, na.strings = &quot;NA&quot;)
+trainingRaw &lt;- read.csv(trainingFile, header = TRUE, na.strings = &quot;NA&quot;)</code></pre>
+<p>If you look at the data (for example using View(trainingData)), you see that many out of the 19622, 160 columns are blank, or NA. We will remove those columns and the columns that do not contribute to the prediction (near zero variance predictors, name and time columns):</p>
+<pre class="r"><code>library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)</code></pre>
+<pre><code>## Warning: package 'randomForest' was built under R version 3.3.2</code></pre>
+<pre><code>## randomForest 4.6-12</code></pre>
+<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre><code>## 
+## Attaching package: 'randomForest'</code></pre>
+<pre><code>## The following object is masked from 'package:ggplot2':
+## 
+##     margin</code></pre>
+<pre class="r"><code># remove NAs
+removeNA =  colSums(is.na(trainingRaw))
+trainingSet = trainingRaw[,removeNA == 0] 
 
-library(caret)</code></pre>
-<pre><code>## Warning: package 'caret' was built under R version 3.3.2</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre class="r"><code># split into train and test
-inTrain = createDataPartition(y=trainingData$classe, p = 0.7, list = FALSE)
-training = trainingData[ inTrain,]
-testing = trainingData[-inTrain,]
+# remove near zero variance predictors
+nzv_cols &lt;- nearZeroVar(trainingSet)
+trainingSet &lt;- trainingSet[, -nzv_cols]
 
-#modFitrf &lt;- train(classe ~ ., data = training, method =&quot;rf&quot;, prox=TRUE)
-#modFitglm &lt;- train(classe ~ ., data = training, method =&quot;glm&quot;)</code></pre>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+# finally remove name and time columns
+trainingSet &lt;- trainingSet[7:ncol(trainingSet)]</code></pre>
+<p>In the next step we split the data into training and validation/probe data. For the purpose of Reproducibilty we set a seed at first:</p>
+<pre class="r"><code># split into train and validation/probe
+set.seed(2011)
+inTrain &lt;- createDataPartition(y=trainingSet$classe, p = 0.7, list = FALSE)
+training &lt;- trainingSet[ inTrain,]
+probe &lt;- trainingSet[-inTrain,]</code></pre>
+<p>Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (each with very simple settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees:</p>
+<pre class="r"><code>modfitrf &lt;- train(classe ~ ., data = training, method =&quot;rf&quot;, prox=TRUE, ntree = 100)</code></pre>
+<p>Let’s validate the model with the validation/probe data and measure the accuracy of our model:</p>
+<pre class="r"><code># predict on probe set
+predictrf &lt;- predict(modfitrf, probe)
+
+confusionMatrix(predictrf, probe$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1673   18    0    0    0
+##          B    1 1115    4    0    1
+##          C    0    6 1019    8    4
+##          D    0    0    3  955    3
+##          E    0    0    0    1 1074
+## 
+## Overall Statistics
+##                                          
+##                Accuracy : 0.9917         
+##                  95% CI : (0.989, 0.9938)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9895         
+##  Mcnemar's Test P-Value : NA             
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9994   0.9789   0.9932   0.9907   0.9926
+## Specificity            0.9957   0.9987   0.9963   0.9988   0.9998
+## Pos Pred Value         0.9894   0.9946   0.9826   0.9938   0.9991
+## Neg Pred Value         0.9998   0.9950   0.9986   0.9982   0.9983
+## Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+## Detection Rate         0.2843   0.1895   0.1732   0.1623   0.1825
+## Detection Prevalence   0.2873   0.1905   0.1762   0.1633   0.1827
+## Balanced Accuracy      0.9976   0.9888   0.9947   0.9947   0.9962</code></pre>
+<pre class="r"><code># accuracy
+rf_accuracy &lt;- sum(predictrf == probe$classe) / length(predictrf)
+# RMSE
+RMSE &lt;- sqrt(mean((predictrf - probe$classe)^2))</code></pre>
+<pre><code>## Warning in Ops.factor(predictrf, probe$classe): '-' not meaningful for
+## factors</code></pre>
+<p>We are ready to use the model on the testing data. Similar to the training data we download it and do the same preparations as we did for the training data:</p>
+<pre class="r"><code># download testing data
+testingURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
+testingFile &lt;- &quot;pml-testing.csv&quot;
+if(!exists(testingFile)){
+  download.file(testingURL, destfile= testingFile)
+}
+# create dataframe
+testingRaw &lt;- read.csv(testingFile, header = TRUE, na.strings = &quot;NA&quot;)
+# perform same data preparations as for training data
+testing &lt;- testingRaw[,removeNA == 0]
+testing &lt;- testing[, -nzv_cols]
+testing &lt;- testing[7:ncol(testing)]
+
+# use the Random forest model to predict classe for the testing data
+rftest &lt;- predict(modfitrf, testing)</code></pre>
 </div>
 
 
