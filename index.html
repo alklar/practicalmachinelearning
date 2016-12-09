@@ -135,7 +135,7 @@ library(randomForest)</code></pre>
 <pre class="r"><code># download training data
 trainingURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 trainingFile &lt;- &quot;pml-training.csv&quot;
-if(!exists(trainingFile)){
+if(!file.exists(trainingFile)){
   download.file(trainingURL, destfile= trainingFile)
 }
 # create dataframe
@@ -165,7 +165,7 @@ probe &lt;- trainingSet[-inTrain,]</code></pre>
 <p>Let’s validate the model with the validation/probe data and measure the accuracy of our model:</p>
 <pre class="r"><code># predict on probe set
 predictrf &lt;- predict(modfitrf, probe)
-
+# show confusion matrix + statistics
 confusionMatrix(predictrf, probe$classe)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
@@ -210,7 +210,7 @@ ose &lt;- sum(predictrf != probe$classe)/length(probe$classe)</code></pre>
 <pre class="r"><code># download testing data
 testingURL &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
 testingFile &lt;- &quot;pml-testing.csv&quot;
-if(!exists(testingFile)){
+if(!file.exists(testingFile)){
   download.file(testingURL, destfile= testingFile)
 }
 # create dataframe
@@ -220,11 +220,33 @@ testing &lt;- testingRaw[,removeNA == 0]
 testing &lt;- testing[, -nzv_cols]
 testing &lt;- testing[7:ncol(testing)]
 
-# use the Random forest model to predict classe for the testing data
+# use the Random Forest model to predict classe for the testing data
 rftest &lt;- predict(modfitrf, testing)
-rftest</code></pre>
-<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
-## Levels: A B C D E</code></pre>
+# create data frame with case and prediction for better readible output
+df &lt;- data.frame(1:20, rftest)
+colnames(df) &lt;- c(&quot;case&quot;, &quot;prediction&quot;)
+df</code></pre>
+<pre><code>##    case prediction
+## 1     1          B
+## 2     2          A
+## 3     3          B
+## 4     4          A
+## 5     5          A
+## 6     6          E
+## 7     7          D
+## 8     8          B
+## 9     9          A
+## 10   10          A
+## 11   11          B
+## 12   12          C
+## 13   13          B
+## 14   14          A
+## 15   15          E
+## 16   16          E
+## 17   17          A
+## 18   18          B
+## 19   19          B
+## 20   20          B</code></pre>
 </div>
 
 

@@ -31,7 +31,7 @@ We start by downloading the training data and create a dataframe from it:
 # download training data
 trainingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 trainingFile <- "pml-training.csv"
-if(!exists(trainingFile)){
+if(!file.exists(trainingFile)){
   download.file(trainingURL, destfile= trainingFile)
 }
 # create dataframe
@@ -72,7 +72,7 @@ Let's validate the model with the validation/probe data and measure the accuracy
 ```{r probe, cache=TRUE}
 # predict on probe set
 predictrf <- predict(modfitrf, probe)
-
+# show confusion matrix + statistics
 confusionMatrix(predictrf, probe$classe)
 # accuracy
 rf_accuracy <- sum(predictrf == probe$classe) / length(probe$classe)
@@ -88,7 +88,7 @@ We are ready to use the model on the testing data. Similar to the training data 
 # download testing data
 testingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 testingFile <- "pml-testing.csv"
-if(!exists(testingFile)){
+if(!file.exists(testingFile)){
   download.file(testingURL, destfile= testingFile)
 }
 # create dataframe
@@ -98,9 +98,12 @@ testing <- testingRaw[,removeNA == 0]
 testing <- testing[, -nzv_cols]
 testing <- testing[7:ncol(testing)]
 
-# use the Random forest model to predict classe for the testing data
+# use the Random Forest model to predict classe for the testing data
 rftest <- predict(modfitrf, testing)
-rftest
+# create data frame with case and prediction for better readible output
+df <- data.frame(1:20, rftest)
+colnames(df) <- c("case", "prediction")
+df
 ```
 
 
