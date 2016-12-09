@@ -1,7 +1,7 @@
 ---
 title: "Qualitative Analysis of Weight Lifting Exercises"
 author: "Alexander Klar"
-date: "December 4, 2016"
+date: "December 9, 2016"
 output: html_document
 ---
 
@@ -9,20 +9,19 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
 ## Abstract
 
 In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution.
 The original dataset is abailable here: http://groupware.les.inf.puc-rio.br/har.
-The quality of the exercises is contained in the variable "classe" in the dataset: Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
-We will use the training set to create, train and crossvalidate a model to predict classe. 
+The quality of the exercises is contained in the variable "classe" in the dataset. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+We will use a training set (known outcome attached) to create, train and crossvalidate a model to predict classe for a testing set (known outcome not attached). 
 
 
 ## Data Preparation and Model Design
 
-Download training data, create dataframe
-```{r , cache=TRUE}
+We start by downloading the training data and create dataframe from it:
+```{r loadTraining, cache=TRUE}
 # download training data
 trainingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 trainingFile <- "pml-training.csv"
@@ -30,18 +29,73 @@ if(!exists(trainingFile)){
   download.file(trainingURL, destfile= trainingFile)
 }
 # create dataframe
-trainingData <- read.csv(trainingFile, header = TRUE, na.strings = "NA")
+trainingRaw <- read.csv(trainingFile, header = TRUE, na.strings = "NA")
+```
 
+If you look at the data (for example using View(trainingData)), you see that many out of the `r ncol(trainingRaw)` columns are blank,  or NA. We will remove those columns and the columns that do not contribute to the prediction (near zero variance predictors, name and time columns):
+
+```{r cleanData, cache=TRUE}
+library(lattice)
+library(ggplot2)
 library(caret)
-# split into train and test
-inTrain = createDataPartition(y=trainingData$classe, p = 0.7, list = FALSE)
-training = trainingData[ inTrain,]
-testing = trainingData[-inTrain,]
+library(randomForest)
 
-#modFitrf <- train(classe ~ ., data = training, method ="rf", prox=TRUE)
-#modFitglm <- train(classe ~ ., data = training, method ="glm")
+# remove NAs
+removeNA =  colSums(is.na(trainingRaw))
+trainingSet = trainingRaw[,removeNA == 0] 
+
+# remove near zero variance predictors
+nzv_cols <- nearZeroVar(trainingSet)
+trainingSet <- trainingSet[, -nzv_cols]
+
+# finally remove name and time columns
+trainingSet <- trainingSet[7:ncol(trainingSet)]
+```
+
+In the next step we split the data into training and validation/probe data. For the purpose of Reproducibilty we set a seed at first: 
+```{r splitData, cache=TRUE}
+# split into train and validation/probe
+set.seed(2011)
+inTrain <- createDataPartition(y=trainingSet$classe, p = 0.7, list = FALSE)
+training <- trainingSet[ inTrain,]
+probe <- trainingSet[-inTrain,]
+```
+
+Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (each with very simple settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees: 
+```{r fitModel, cache=TRUE}
+modfitrf <- train(classe ~ ., data = training, method ="rf", prox=TRUE, ntree = 100)
+```
+
+Let's validate the model with the validation/probe data and measure the accuracy of our model:
+```{r probe, cache=TRUE}
+# predict on probe set
+predictrf <- predict(modfitrf, probe)
+
+confusionMatrix(predictrf, probe$classe)
+# accuracy
+rf_accuracy <- sum(predictrf == probe$classe) / length(predictrf)
+# RMSE
+RMSE <- sqrt(mean((predictrf - probe$classe)^2))
+
+```
+
+We are ready to use the model on the testing data. Similar to the training data we download it and do the same preparations as we did for the training data:
+```{r testing, cache=TRUE}
+# download testing data
+testingURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+testingFile <- "pml-testing.csv"
+if(!exists(testingFile)){
+  download.file(testingURL, destfile= testingFile)
+}
+# create dataframe
+testingRaw <- read.csv(testingFile, header = TRUE, na.strings = "NA")
+# perform same data preparations as for training data
+testing <- testingRaw[,removeNA == 0]
+testing <- testing[, -nzv_cols]
+testing <- testing[7:ncol(testing)]
+
+# use the Random forest model to predict classe for the testing data
+rftest <- predict(modfitrf, testing)
 ```
 
 
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
