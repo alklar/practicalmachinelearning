@@ -14,7 +14,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution.
 The original dataset is abailable here: http://groupware.les.inf.puc-rio.br/har.
+
 The quality of the exercises is contained in the variable "classe" in the dataset. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
 We will use a training set (known outcome attached) to create, train and crossvalidate a model to predict classe for a testing set (known outcome not attached). 
 
 
@@ -62,8 +64,9 @@ training <- trainingSet[ inTrain,]
 probe <- trainingSet[-inTrain,]
 ```
 
-Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (each with very simple settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees: 
+Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (with more or less default settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees: 
 ```{r fitModel, cache=TRUE}
+set.seed(2011)
 modfitrf <- train(classe ~ ., data = training, method ="rf", prox=TRUE, ntree = 100)
 ```
 ## Validation
@@ -100,10 +103,11 @@ testing <- testing[7:ncol(testing)]
 
 # use the Random Forest model to predict classe for the testing data
 rftest <- predict(modfitrf, testing)
-# create data frame with case and prediction for better readible output
+# create dataframe with problem_id and prediction for better readable output
 df <- data.frame(1:20, rftest)
-colnames(df) <- c("case", "prediction")
+colnames(df) <- c("problem_id", "prediction")
+# show outcome
 df
 ```
-
+The concludes this report. We have shown, how to prepare data, train and crossvalidate a model and finally use it to predict unknown outcomes. The expected error is less than one percent.
 

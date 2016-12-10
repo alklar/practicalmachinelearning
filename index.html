@@ -124,7 +124,9 @@ $(document).ready(function () {
 
 <div id="abstract" class="section level2">
 <h2>Abstract</h2>
-<p>In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution. The original dataset is abailable here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a>. The quality of the exercises is contained in the variable “classe” in the dataset. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). We will use a training set (known outcome attached) to create, train and crossvalidate a model to predict classe for a testing set (known outcome not attached).</p>
+<p>In this report we will investigate the dataset containing weight lifting exercises biceps curl and predict the quality of execution. The original dataset is abailable here: <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a>.</p>
+<p>The quality of the exercises is contained in the variable “classe” in the dataset. Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).</p>
+<p>We will use a training set (known outcome attached) to create, train and crossvalidate a model to predict classe for a testing set (known outcome not attached).</p>
 </div>
 <div id="data-preparation-and-model-design" class="section level2">
 <h2>Data Preparation and Model Design</h2>
@@ -157,8 +159,9 @@ set.seed(2011)
 inTrain &lt;- createDataPartition(y=trainingSet$classe, p = 0.7, list = FALSE)
 training &lt;- trainingSet[ inTrain,]
 probe &lt;- trainingSet[-inTrain,]</code></pre>
-<p>Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (each with very simple settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees:</p>
-<pre class="r"><code>modfitrf &lt;- train(classe ~ ., data = training, method =&quot;rf&quot;, prox=TRUE, ntree = 100)</code></pre>
+<p>Now we are able to use the training data to train a model. I have tested Linear Discriminant Analysis (LDA), General Boosting (GBM), Naive Bayes (NB) and Random Forest (with more or less default settings). Random Forest needed most computation time, but also gave the best results. So we will use it here. To limit computation time, we set a limit to 100 trees:</p>
+<pre class="r"><code>set.seed(2011)
+modfitrf &lt;- train(classe ~ ., data = training, method =&quot;rf&quot;, prox=TRUE, ntree = 100)</code></pre>
 </div>
 <div id="validation" class="section level2">
 <h2>Validation</h2>
@@ -222,31 +225,33 @@ testing &lt;- testing[7:ncol(testing)]
 
 # use the Random Forest model to predict classe for the testing data
 rftest &lt;- predict(modfitrf, testing)
-# create data frame with case and prediction for better readible output
+# create dataframe with problem_id and prediction for better readable output
 df &lt;- data.frame(1:20, rftest)
-colnames(df) &lt;- c(&quot;case&quot;, &quot;prediction&quot;)
+colnames(df) &lt;- c(&quot;problem_id&quot;, &quot;prediction&quot;)
+# show outcome
 df</code></pre>
-<pre><code>##    case prediction
-## 1     1          B
-## 2     2          A
-## 3     3          B
-## 4     4          A
-## 5     5          A
-## 6     6          E
-## 7     7          D
-## 8     8          B
-## 9     9          A
-## 10   10          A
-## 11   11          B
-## 12   12          C
-## 13   13          B
-## 14   14          A
-## 15   15          E
-## 16   16          E
-## 17   17          A
-## 18   18          B
-## 19   19          B
-## 20   20          B</code></pre>
+<pre><code>##    problem_id prediction
+## 1           1          B
+## 2           2          A
+## 3           3          B
+## 4           4          A
+## 5           5          A
+## 6           6          E
+## 7           7          D
+## 8           8          B
+## 9           9          A
+## 10         10          A
+## 11         11          B
+## 12         12          C
+## 13         13          B
+## 14         14          A
+## 15         15          E
+## 16         16          E
+## 17         17          A
+## 18         18          B
+## 19         19          B
+## 20         20          B</code></pre>
+<p>The concludes this report. We have shown, how to prepare data, train and crossvalidate a model and finally use it to predict unknown outcomes. The expected error is less than one percent.</p>
 </div>
 
 
